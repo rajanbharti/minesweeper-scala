@@ -1,15 +1,46 @@
 /**
- * Created by rajan on 7/10/15.
+ * Created by rajan on 7/14/15.
  */
 class Game {
-  var b: Board = new Board()
+  val board: Board = new Board(8, 8, 10)
+  var tempBoard: Board = board
 
   def start(): Unit = {
     println("Enter x")
     val x = Console.readInt()
     println("Enter y")
     val y = Console.readInt()
-    if (b.checkMines(x, y) equals true) println("Game Over !!")
-    else start()
+    val tempCell: Cell = tempBoard.getCell(x, y)
+    tempCell match {
+      case Mine(_) => {
+         tempBoard = tempBoard.showCell(x, y)
+        displayBoard(tempBoard)
+        println("Game Over!")
+      }
+      case Empty(_) => {
+         tempBoard = tempBoard.showCell(x, y)
+        displayBoard(tempBoard)
+        start()
+      }
+      case Hint(_, _) => {
+         tempBoard = tempBoard.showCell(x, y)
+        displayBoard(tempBoard)
+        start()
+      }
+    }
+  }
+
+  private def displayBoard(tempBoard: Board): Unit = {
+    for (i <- 0 until 8) {
+      for (j <- 0 until 8) {
+        tempBoard.board(i)(j) match {
+          case Mine(true) => print("*")
+          case Empty(true) => print(" ")
+          case Hint(true, _) => print _
+          case _ => print("X")
+        }
+      }
+      println()
+    }
   }
 }

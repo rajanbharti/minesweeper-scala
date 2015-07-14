@@ -1,20 +1,9 @@
-/**
- * Created by rajan on 7/10/15.
- */
-class Cell {
+abstract class Cell(val shown: Boolean)
 
-  private var mine: Boolean = false
-  private var adjacentMine: Char = '*'
+case class Mine(override val shown: Boolean) extends Cell(shown)
 
-  def getVal: Char = adjacentMine
+case class Empty(override val shown: Boolean) extends Cell(shown)
 
-  def setVal(ch: Char) = {
-    this.adjacentMine = ch
-  }
-
-  def setMine(b: Boolean) = {
-    mine = b
-  }
-
-  def isMine: Boolean = mine
+case class Hint(override val shown: Boolean, val xc: Int) extends Cell(shown) {
+  val x = xc
 }

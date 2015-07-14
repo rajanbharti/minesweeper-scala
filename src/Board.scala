@@ -1,85 +1,132 @@
-import Array._
+import scala.util.Random
 
-/**
- * Created by rajan on 7/10/15.
- */
-class Board {
-  var grid = ofDim[Cell](8, 8)
+class Board(rowsc: Int, columnsc: Int, minesc: Int, boardc: List[List[Cell]] = Nil) {
+  val rows = rowsc
+  val columns = columnsc
+  val mines = minesc
+  val board = if (boardc != Nil) boardc else initBoard()
 
-  for (i <- 0 until 8) {
-    for (j <- 0 until 8)
-      grid(i)(j) = new Cell()
-  }
-  placeAllMines()
-
-  for (i <- 0 until 8) {
-    for (j <- 0 until 8)
-      print(grid(i)(j).getVal)
-    println()
+  private def initBoard(): List[List[Cell]] = {
+    val board1 = List.tabulate(rows)(_ => List.tabulate(columns)(_ => new Empty(false)))
+    val board2 = initMines(mines, board1)
+    initHints(board2, rows, columns)
   }
 
-
-  private def displayBoard(x: Int, y: Int): Unit = {
-    var num = 0
-    num = minesAround(x, y)
-
-    if (num >= 0) grid(x)(y).setVal((num + 48).toChar)
-    else clearBoard(x, y)
-
-    for (i <- 0 until 8) {
-      for (j <- 0 until 8)
-        print(grid(i)(j).getVal)
-      println("")
+  private def initMines(quantity: Int, board: List[List[Cell]]): List[List[Cell]] = {
+    val newboard = tryToPutMine(board)
+    if (quantity > 1) {
+      initMines(quantity - 1, newboard)
+    } else {
+      newboard
     }
   }
 
-  private def lowerBound(x: Int) = if (x <= 0) 0 else x - 1
-
-  private def upperBound(x: Int) = if (x >= 7) 7 else x + 1
-
-  def minesAround(i: Int, j: Int): Int = {
-    var num = 0;
-    for (i <- lowerBound(i) until upperBound(i); j <- lowerBound(j) until upperBound(j))
-      if (grid(i)(j).isMine) num = num + 1
-    num
+  private def putMine(x: Int, y: Int, board: List[List[Cell]]): List[List[Cell]] = {
+    board.updated(x, board(x).updated(y, Mine(false)))
   }
 
-  private def clearBoard(x: Int, y: Int): Unit = {
-    var i = lowerBound(x)
-    while (i <= upperBound(x)) {
-      var j = lowerBound(y)
-      while (j <= upperBound(y)) {
-        if (minesAround(i, j) == 0) grid(i)(j).setVal('0')
-        j = j + 1
-      }
-      i = i + 1
+  private def tryToPutMine(board: List[List[Cell]]): List[List[Cell]] = {
+    val x = new Random().nextInt(rows)
+    val y = new Random().nextInt(columns)
+    val t: Cell = board(x)(y)
+    t match {
+      case Mine(_) => tryToPutMine(board)
+      case _ => putMine(x, y, board)
     }
   }
 
-  private def placeMine(): Unit = {
-    val x = (Math.random() * 7).toInt
-    val y = (Math.random() * 7).toInt
-    if (grid(x)(y).isMine equals false)
-      grid(x)(y).setMine(true)
-    else placeMine()
+  private def initHints(board: List[List[Cell]], x: Int, y: Int): List[List[Cell]] = {
+    List.tabulate(x, y)((i, j) => transformIntoHint(board, i, j))
   }
 
-  private def placeAllMines(): Unit = {
-    for (i <- 0 until 8)
-      placeMine()
+  private def transformIntoHint(boardWithBombs: List[List[Cell]], x: Int, y: Int): Cell = {
+    val cell = boardWithBombs(x)(y)
+    cell match {
+      case Mine(b) => Mine(b)
+      case _ => initHint(boardWithBombs, x, y)
+    }
   }
 
-  def checkMines(x: Int, y: Int): Boolean = {
-
-    if (grid(x)(y).isMine equals true) true
-    else {
-      var emptyCount = 0
-      for (i <- 0 until 8; j <- 0 until 8) {
-        if (grid(i)(j).getVal != '*') emptyCount = emptyCount + 1
-        if (emptyCount == 54) println("You Win")
-        else displayBoard(x, y)
+  private def initHint(boardWithBombs: List[List[Cell]], x: Int, y: Int): Cell = {
+    def countBomb(cell: Cell): Int = {
+      cell match {
+        case Mine(_) => 1
+        case _ => 0
       }
-      false
+    }
+    val neighborCells = getCellOnBoard(boardWithBombs, x - 1, y - 1) ::
+      getCellOnBoard(boardWithBombs, x, y - 1) ::
+      getCellOnBoard(boardWithBombs, x + 1, y - 1) ::
+      getCellOnBoard(boardWithBombs, x - 1, y) ::
+      getCellOnBoard(boardWithBombs, x + 1, y) ::
+      getCellOnBoard(boardWithBombs, x - 1, y + 1) ::
+      getCellOnBoard(boardWithBombs, x, y + 1) ::
+      getCellOnBoard(boardWithBombs, x + 1, y + 1) :: Nil
+    val hintValue = neighborCells.map(countBomb).sum
+    hintValue match {
+      case 0 => Empty(false)
+      case _ => Hint(false, hintValue)
+    }
+  }
+
+  def showCell(tuple: (Int, Int)): Board = {
+    val x = tuple._1
+    val y = tuple._2
+    val cell = board(x)(y)
+    cell match {
+      case Empty(false) => showNeighborCells(x, y)
+      case Mine(false) => {
+        val newboard = board.updated(x, board(x).updated(y, Mine(true)))
+        new Board(rows, columns, mines, newboard)
+      }
+      case Hint(false, hint) => {
+        val newboard = board.updated(x, board(x).updated(y, Hint(true, hint)))
+        new Board(rows, columns, mines, newboard)
+      }
+      case _ => new Board(rows, columns, mines, board)
+    }
+  }
+
+  private def showNeighborCells(x: Int, y: Int): Board = {
+    def getPosition(board: List[List[Cell]], x: Int, y: Int): List[(Int, Int)] = {
+      if (contains(x, y)) {
+        List(Tuple2(x, y))
+      } else {
+        Nil
+      }
+    }
+    val newboard = board.updated(x, board(x).updated(y, Empty(true)))
+    val newGame = new Board(rows, columns, mines, newboard)
+    val neighborPositions: List[(Int, Int)] = getPosition(board, x - 1, y - 1) ++
+      getPosition(board, x, y - 1) ++
+      getPosition(board, x + 1, y - 1) ++
+      getPosition(board, x - 1, y) ++
+      getPosition(board, x + 1, y) ++
+      getPosition(board, x - 1, y + 1) ++
+      getPosition(board, x, y + 1) ++
+      getPosition(board, x + 1, y + 1) ++ Nil
+    neighborPositions.foldLeft(newGame)((game, tuple) => game.showCell(tuple))
+  }
+
+  def contains(x: Int, y: Int): Boolean = {
+    x >= 0 && x < rows && y >= 0 && y < columns
+  }
+
+  def getCell(x: Int, y: Int): Cell = {
+    if (contains(x, y)) {
+      board(x)(y)
+    } else {
+      null
+    }
+  }
+
+  def getCellOnBoard(board: List[List[Cell]], x: Int, y: Int): Cell = {
+    if (contains(x, y)) {
+      board(x)(y)
+    } else {
+      null
     }
   }
 }
+
+

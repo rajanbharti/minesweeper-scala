@@ -10,24 +10,31 @@ class Game {
     val x = Console.readInt()
     println("Enter y")
     val y = Console.readInt()
-    val tempCell: Cell = tempBoard.getCell(x, y)
-    tempCell match {
-      case Mine(_) => {
-         tempBoard = tempBoard.showCell(x, y)
-        displayBoard(tempBoard)
-        println("Game Over!")
-      }
-      case Empty(_) => {
-         tempBoard = tempBoard.showCell(x, y)
-        displayBoard(tempBoard)
-        start()
-      }
-      case Hint(_, _) => {
-         tempBoard = tempBoard.showCell(x, y)
-        displayBoard(tempBoard)
-        start()
+    if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+      val tempCell: Cell = tempBoard.getCell(x, y)
+      tempCell match {
+        case Mine(_) => {
+          tempBoard = tempBoard.showCell(x, y)
+          displayBoard(tempBoard)
+          println("Game Over!")
+        }
+        case Empty(_) => {
+          tempBoard = tempBoard.showCell(x, y)
+          displayBoard(tempBoard)
+          start()
+        }
+        case Hint(_, _) => {
+          tempBoard = tempBoard.showCell(x, y)
+          displayBoard(tempBoard)
+          start()
+        }
       }
     }
+    else {
+      println("Enter valid cell")
+      start()
+    }
+
   }
 
   private def displayBoard(tempBoard: Board): Unit = {
